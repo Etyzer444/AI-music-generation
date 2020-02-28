@@ -9,8 +9,8 @@
         <module name="testRNN" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="testRNN" target="1.5" />
+    <bytecodeTargetLevel target="8">
+      <module name="testRNN" target="11" />
     </bytecodeTargetLevel>
   </component>
 </project>
