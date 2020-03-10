@@ -1,5 +1,3 @@
-import com.sun.jna.platform.win32.OaIdl;
-
 import javax.sound.midi.*;
 import java.io.File;
 import java.io.FileWriter;
@@ -54,7 +52,7 @@ public class MidiNoteExtractor {
         fw.close();
 
     }
-    /*private String readMessage(MidiMessage message)
+    private String readMessage(MidiMessage message)
     {
         if(message instanceof ShortMessage)
         {
@@ -64,30 +62,30 @@ public class MidiNoteExtractor {
                 int key = sm.getData1();
                 int octave = (key / 12)-1;
                 int note = key % 12;
-                String noteName = NOTE_NAMES[note];
+                //String noteName = NOTE_NAMES[note];
                 int velocity = sm.getData2();
-                return "off " + noteName + " " + octave + " " + velocity;
+                return "0 " + note + " " + octave + " " + velocity;
             }
             else if(sm.getCommand()==NOTE_ON)
             {
                 int key = sm.getData1();
                 int octave = (key / 12)-1;
                 int note = key % 12;
-                String noteName = NOTE_NAMES[note];
+                //String noteName = NOTE_NAMES[note];
                 int velocity = sm.getData2();
-                return "on " + noteName + " " + octave + " " + velocity;
+                return "1 " + note + " " + octave + " " + velocity;
             }
             else
             {
-                return "Command: " + Integer.toString(sm.getCommand());
+                return "0 0 0 0";
             }
         }
         else
         {
-            return "Other message";
+            return "0 0 0 0";
         }
 
-    }*/
+    }
     private boolean[] updateNoteArray(boolean[] previousState, MidiMessage message)
     {
         if(message instanceof ShortMessage)
@@ -140,6 +138,29 @@ public class MidiNoteExtractor {
             }
         }
         return output;
+    }
+    public void readFileShort(File f) throws IOException, InvalidMidiDataException
+    {
+        Sequence mySequence= MidiSystem.getSequence(f);
+        FileWriter fw=new FileWriter("f0.csv");
+        FileWriter labels = new FileWriter("l0.csv");
+        long currentTick=0;
+        for(int i=0;i<mySequence.getTracks()[3].size();i++)
+        {
+
+            MidiEvent current=mySequence.getTracks()[3].get(i);
+            fw.write((current.getTick()-currentTick) +" "+ readMessage(current.getMessage()) + "\n");
+            if(i>0)
+            {
+                labels.write((current.getTick()-currentTick) +" "+ readMessage(current.getMessage()) + "\n");
+            }
+            currentTick=current.getTick();
+        }
+        labels.write("0 0 0 0 0"); //predict nothing at the end of the song
+        labels.flush();
+        fw.flush();
+        labels.close();
+        fw.close();
     }
 
 }

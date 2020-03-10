@@ -14,22 +14,16 @@ import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.deeplearning4j.nn.graph.vertex.impl.rnn.LastTimeStepVertex;
 import org.deeplearning4j.nn.multilayer.MultiLayerNetwork;
 import org.deeplearning4j.nn.weights.WeightInit;
-import org.deeplearning4j.optimize.listeners.ScoreIterationListener;
-import org.nd4j.evaluation.classification.ROC;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.api.ndarray.INDArray;
-import org.nd4j.linalg.dataset.api.DataSet;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.learning.config.RmsProp;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
-
 import javax.sound.midi.InvalidMidiDataException;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-
-import static org.nd4j.graph.UIEventSubtype.LEARNING_RATE;
 
 public class Main {
     public static final int lstmLayerSize = 300;
@@ -39,14 +33,14 @@ public class Main {
     public static void main(String args[]) throws InvalidMidiDataException, IOException, InterruptedException {
 
         MidiNoteExtractor mne = new MidiNoteExtractor("data");
-        mne.readFile(new File("data/test.mid"));
+        mne.readFileShort(new File("data/test.mid"));
         int linesToSkip = 0;
         String delimiter = " ";
         CSVSequenceRecordReader feature = new CSVSequenceRecordReader(linesToSkip, delimiter);
         feature.initialize(new NumberedFileInputSplit("f%d.csv", 0, 0));
         CSVSequenceRecordReader label = new CSVSequenceRecordReader(linesToSkip, delimiter);
         label.initialize(new NumberedFileInputSplit("l%d.csv", 0, 0));
-        DataSetIterator trainData = new SequenceRecordReaderDataSetIterator(feature, label, miniBatch, 2, true);
+        DataSetIterator trainData = new SequenceRecordReaderDataSetIterator(feature, label, miniBatch, -1, true);
 
         // neural net
         MultiLayerConfiguration conf = new NeuralNetConfiguration.Builder()
@@ -72,19 +66,20 @@ public class Main {
             feature.initialize(new NumberedFileInputSplit("f%d.csv", 0, 0));
             label.initialize(new NumberedFileInputSplit("l%d.csv", 0, 0));
             trainData = new SequenceRecordReaderDataSetIterator(feature, label, miniBatch, 2, true);
-            if(true) //create a sample every 10 epochs
+            if(i%5==0) //create a sample every x epochs
             {
                 FileWriter fw = new FileWriter((i + 1) + " epochsSample.csv");
                 net.rnnClearPreviousState();
-                int songLength = 100000;
-                INDArray input = Nd4j.zeros(1, 24);
-                for (int j = 0; j < songLength; j++) {
+                int songLength = 20000;
+                INDArray input = Nd4j.zeros(1, 5);
+                for (int j = 0; j < songLength; j++)
+                {
                     input = net.rnnTimeStep(input);
-                    for (int k = 0; k < 24; k++) {
+                    for (int k = 0; k < 5; k++) {
                         fw.write(input.getDouble(k) + " ");
                     }
                     fw.write("\n");
-                    System.out.println("wrote "+j+" ticks");
+                    System.out.println("wrote "+j+" events");
 
                 }
                 fw.flush();
