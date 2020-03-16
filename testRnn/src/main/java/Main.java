@@ -17,6 +17,7 @@ import org.deeplearning4j.nn.weights.WeightInit;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
+import org.nd4j.linalg.dataset.api.preprocessor.NormalizerMinMaxScaler;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.learning.config.RmsProp;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
@@ -27,7 +28,7 @@ import java.io.IOException;
 
 public class Main {
     public static final int lstmLayerSize = 300;
-    public static final int NB_EPOCHS = 100;
+    public static final int NB_EPOCHS = 1000;
     public static final int miniBatch=100;
 
     public static void main(String args[]) throws InvalidMidiDataException, IOException, InterruptedException {
@@ -50,10 +51,10 @@ public class Main {
                 .weightInit(WeightInit.XAVIER)
                 .list()
                 .layer(0, new LSTM.Builder().nIn(trainData.inputColumns()).nOut(lstmLayerSize)
-                        .activation(Activation.TANH).build())
+                        .activation(Activation.SOFTSIGN).build())
                 .layer(1, new LSTM.Builder().nIn(lstmLayerSize).nOut(lstmLayerSize)
-                        .activation(Activation.TANH).build())
-                .layer(2, new RnnOutputLayer.Builder(LossFunctions.LossFunction.MCXENT).activation(Activation.SOFTMAX)
+                        .activation(Activation.SOFTSIGN).build())
+                .layer(2, new RnnOutputLayer.Builder(LossFunctions.LossFunction.MSE).activation(Activation.IDENTITY)
                         .nIn(lstmLayerSize).nOut(trainData.inputColumns()).build())
                 .backpropType(BackpropType.TruncatedBPTT).tBPTTForwardLength(50).tBPTTBackwardLength(50)
                 .build();
@@ -61,12 +62,12 @@ public class Main {
         net.init();
         for(int i=0;i<NB_EPOCHS;i++)
         {
-            System.out.println("epoch: "+ i);
+            System.out.println("epoch: "+ (i + 1));
             net.fit(trainData);
             feature.initialize(new NumberedFileInputSplit("f%d.csv", 0, 0));
             label.initialize(new NumberedFileInputSplit("l%d.csv", 0, 0));
-            trainData = new SequenceRecordReaderDataSetIterator(feature, label, miniBatch, 2, true);
-            if(i%5==0) //create a sample every x epochs
+            trainData = new SequenceRecordReaderDataSetIterator(feature, label, miniBatch, -1, true);
+            if((i+1)%5==0) //create a sample every x epochs
             {
                 FileWriter fw = new FileWriter((i + 1) + " epochsSample.csv");
                 net.rnnClearPreviousState();
@@ -77,13 +78,15 @@ public class Main {
                     input = net.rnnTimeStep(input);
                     for (int k = 0; k < 5; k++) {
                         fw.write(input.getDouble(k) + " ");
+
                     }
                     fw.write("\n");
-                    System.out.println("wrote "+j+" events");
 
                 }
                 fw.flush();
                 fw.close();
+                System.out.println("wrote sample file for epoch"+ (i+1));
+                mne.csvToMidi(new File((i+1) + " epochsSample.csv"),"song of "+(i+1)+ " epochs.mid");
             }
 
         }

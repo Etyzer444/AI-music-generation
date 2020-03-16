@@ -1,7 +1,12 @@
 import javax.sound.midi.*;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
+import java.util.Locale;
+import java.util.Scanner;
 
 public class MidiNoteExtractor {
     String dataFolder;
@@ -64,7 +69,7 @@ public class MidiNoteExtractor {
                 int note = key % 12;
                 //String noteName = NOTE_NAMES[note];
                 int velocity = sm.getData2();
-                return "0 " + note + " " + octave + " " + velocity;
+                return "-100 " + note + " " + octave + " " + velocity;
             }
             else if(sm.getCommand()==NOTE_ON)
             {
@@ -73,7 +78,7 @@ public class MidiNoteExtractor {
                 int note = key % 12;
                 //String noteName = NOTE_NAMES[note];
                 int velocity = sm.getData2();
-                return "1 " + note + " " + octave + " " + velocity;
+                return "100 " + note + " " + octave + " " + velocity;
             }
             else
             {
@@ -161,6 +166,72 @@ public class MidiNoteExtractor {
         fw.flush();
         labels.close();
         fw.close();
+    }
+    public void csvToMidi(File f, String filename) throws FileNotFoundException, InvalidMidiDataException, IOException
+    {
+        Sequence newSong= new Sequence(Sequence.PPQ,24);
+        int ticks=0;
+        Track t=newSong.createTrack();
+        Scanner scan = new Scanner(f);
+        scan.useLocale(new Locale("en", "US"));
+        while(scan.hasNextDouble())
+        {
+            int newTicks=tickCounter(scan.nextDouble());
+            int onOff=onOffCounter(scan.nextDouble());
+            int note=noteCounter(scan.nextDouble());
+            int octave=octaveCounter(scan.nextDouble());
+            int velocity=velocityCounter(scan.nextDouble());
+            int data1=(octave*12)+note;
+            if(onOff==100)
+            {
+                ShortMessage myMessage = new ShortMessage();
+                myMessage.setMessage(NOTE_ON,data1,velocity);
+                t.add(new MidiEvent(myMessage, ticks + newTicks));
+            }
+            else if (onOff==-100)
+            {
+                ShortMessage myMessage = new ShortMessage();
+                myMessage.setMessage(NOTE_OFF,data1,velocity);
+                t.add(new MidiEvent(myMessage, ticks + newTicks));
+            }
+            ticks+=newTicks;
+        }
+        File newFile=new File(filename);
+        System.out.println(newSong.getMicrosecondLength());
+        MidiSystem.write(newSong,1,newFile);
+
+
+    }
+    private int tickCounter(double val)
+    {
+        if(val<=0.5)
+        {
+            return 0;
+        }
+        else return (int) Math.round(val);
+    }
+    private int noteCounter(double val)
+    {
+        if(val<=0.5) return 0;
+        else if(val>=11) return 11;
+        else return (int) Math.round(val);
+    }
+    private int octaveCounter(double val)
+    {
+        if(val<=0.5) return 0;
+        else if(val>=9) return 9;
+        else return (int) Math.round(val);
+    }
+    private int velocityCounter(double val)
+    {
+        if(val<=0.5) return 0;
+        else if(val>=127) return 127;
+        else return (int) Math.round(val);
+    }
+    private int onOffCounter(double val)
+    {
+        if(val<=0) return -100;
+        else return 100;
     }
 
 }
